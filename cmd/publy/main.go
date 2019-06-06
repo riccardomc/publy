@@ -7,6 +7,7 @@ import (
 
 	"cloud.google.com/go/pubsub"
 	"github.com/urfave/cli"
+	"google.golang.org/api/iterator"
 )
 
 func main() {
@@ -29,21 +30,57 @@ func main() {
 			Name:  "message",
 			Usage: "required - body of the message to send",
 		},
+		cli.BoolFlag{
+			Name:  "create",
+			Usage: "optional - create topic if it doesn't exist",
+		},
+		cli.BoolFlag{
+			Name:  "list",
+			Usage: "optional - list topics",
+		},
 	}
 
 	app.Action = func(c *cli.Context) error {
 		topicName := c.String("topic")
 		projectID := c.String("project")
 		messageBody := c.String("message")
+		list := c.Bool("list")
 
-		if topicName == "" || projectID == "" || messageBody == "" {
+		if projectID == "" {
 			cli.ShowAppHelpAndExit(c, 0)
+		}
+
+		if !list {
+			if topicName == "" || messageBody == "" {
+				cli.ShowAppHelpAndExit(c, 0)
+			}
 		}
 
 		ctx := context.Background()
 		client, err := pubsub.NewClient(ctx, projectID)
 		if err != nil {
 			return err
+		}
+
+		if list {
+			topics := client.Topics(ctx)
+			for {
+				topic, err := topics.Next()
+				if err == iterator.Done {
+					return err
+				}
+				if err != nil {
+					return err
+				}
+				log.Println(topic)
+			}
+		}
+
+		if c.Bool("create") {
+			_, err := client.CreateTopic(ctx, topicName)
+			if err != nil {
+				log.Printf("attempt to create topic `%s` failed: %v\n", topicName, err)
+			}
 		}
 
 		topic := client.Topic(topicName)
