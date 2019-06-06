@@ -1,6 +1,12 @@
+sources = $(shell find src -name *.go )
 
-publy: main.go
-	go build -o publy *.go
+all: publy subly
+
+publy: $(sources)
+	go build -o $@ cmd/$@/main.go $(soruces)
+
+subly: $(sources)
+	go build -o $@ cmd/$@/main.go $(soruces)
 
 clean:
-	rm -rf publy
+	rm -rf publy subly
